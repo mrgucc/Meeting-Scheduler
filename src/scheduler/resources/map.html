@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script async defer>
+      var map;
+      var service;
+      let markers = [];
+      let zipMarkers = [];
+      var loc;
+      
+      function initMap() {
+        setTimeout(() => {  console.log("Loading complete."); }, 3000);
+         loc = new google.maps.LatLng(39.828132, -98.579415);
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: loc,
+          zoom: 5,
+        mapTypeControl: false,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        });
+        
+     }
+    function centerMap(){
+        map.setZoom(12);    
+    }
+    function runGoogle(zipStr){
+            zipMarkers.forEach(marker => {
+                marker.setMap(null);
+              });
+            zips = zipStr.toString().split(", ");
+            console.log(zips);
+                var bounds = new google.maps.LatLngBounds();
+                function someFunction(zips, callback) {
+                        var latTot = 0;
+                        var lngTot = 0;
+                        var coords = [];
+                    zips.forEach(zip => geo(zip));
+                    function geo( zip) {
+                        geocoder = new google.maps.Geocoder();
+                        if(geocoder) {
+                            geocoder.geocode(  {'address': "zipcode " + zip }, function(results, status){
+                                    if (status == 'OK') {
+                                        zipMarkers.push(new google.maps.Marker({
+                                            position: results[0].geometry.location,
+                                            map: map,
+                                            icon: {url: "https://img.icons8.com/android/24/000000/user.png" }
+                                            
+                                        }));
+                                        coords.push(results[0].geometry.location);
+                                        bounds.extend(results[0].geometry.location);
+                                        map.fitBounds(bounds);
+                                            // Check if all calls have been processed
+                                        if (coords.length == zips.length) {
+                                            if (typeof callback == 'function' ) {
+                                                zipMarkers.push(new google.maps.Marker({
+                                                    position: map.getCenter(),
+                                                    map:map,
+                                                    icon: {url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"}
+                                                }));
+                                               callback(map.getZoom(), map.getCenter());
+                                            }
+                                        }
+                                    } else {
+                                        alert('Geocode was not successful for the following reason: ' + status);
+                                    }
+                            });
+                        }
+                    }       
+                }
+                someFunction(zips, function(zoom, center) {
+                    map.setZoom(zoom);
+                     var request = {
+                      location: center,
+                      radius: '6000',
+                      keyword: 'coffee'
+                    };
+
+                    service = new google.maps.places.PlacesService(map);
+                    service.nearbySearch(request, callback);
+
+                });
+
+    }
+    function callback(results, status) {
+      if (status == google.maps.places.PlacesServiceStatus.OK) {
+       let places = [];
+       for (let i = 0; i < results.length; i++) {
+           places.push(results[i]);
+       }
+
+              if (places.length == 0) {
+                return;
+              } // Clear out the old markers.
+
+              markers.forEach(marker => {
+                marker.setMap(null);
+              });
+              markers = []; // For each place, get the icon, name and location.
+
+              const bounds = new google.maps.LatLngBounds();
+              places.forEach(place => {
+                if (!place.geometry) {
+                  console.log("Returned place contains no geometry");
+                  return;
+                }
+
+                const icon = {
+                  url: place.icon,
+                  size: new google.maps.Size(71, 71),
+                  origin: new google.maps.Point(0, 0),
+                  anchor: new google.maps.Point(17, 34),
+                  scaledSize: new google.maps.Size(25, 25)
+                }; // Create a marker for each place.
+
+                markers.push(
+                  new google.maps.Marker({
+                    map,
+                    icon,
+                    address: place.formatted_address,
+                    id: place.place_id,
+                    title: place.name,
+                    position: place.geometry.location
+                  })
+
+                );
+
+                if (place.geometry.viewport) {
+                  // Only geocodes have viewport.
+                  bounds.union(place.geometry.viewport);
+                } else {
+                  bounds.extend(place.geometry.location);
+                }
+              });
+
+              for (let j = 0; j < markers.length; j++) {
+                  google.maps.event.addListener(markers[j], "click", placeD(j));
+              }
+              const infowindow = new google.maps.InfoWindow();
+              function placeD(i) {
+                return function() {
+                    var request = { placeId: markers[i].id };
+                    service.getDetails(request, function(details, status) {
+                        google.maps.event.addListener(markers[i], 'click', function() {
+                            infowindow.setContent("<div><strong>" + details.name + "</strong><br />" + details.formatted_address +"<br /> Rating: " + details.rating);
+                            infowindow.open(map, this);
+                        });
+                    });
+                };
+              }
+
+
+      }
+  }
+  
+  
+      
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD02frXn2eWSPFat3RbIurFYg3WNQNPrrU&callback=initMap&libraries=places">
+    </script>
+  </body>
+</html>
